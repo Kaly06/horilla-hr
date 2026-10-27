@@ -25,6 +25,10 @@ export ALLOWED_HOSTS="${ALLOWED_HOSTS:-*}"
 export CSRF_TRUSTED_ORIGINS="${CSRF_TRUSTED_ORIGINS:-http://localhost:${PORT}}"
 export DB_NAME="$DB"
 
+# Serve correctly behind an HTTPS reverse proxy (previews, tunnels, iframes).
+# Without this the login form answers every submit with 403 CSRF-cookie errors.
+export HORILLA_PREVIEW_MODE="${HORILLA_PREVIEW_MODE:-1}"
+
 echo "→ database : $DB_NAME"
 echo "→ python   : $("$PYTHON" --version 2>&1)"
 
@@ -33,5 +37,6 @@ if [ ! -f "$DB_NAME" ]; then
     "$PYTHON" manage.py migrate --noinput
 fi
 
+echo "→ preview  : HORILLA_PREVIEW_MODE=${HORILLA_PREVIEW_MODE}"
 echo "→ serving  : http://localhost:${PORT}"
 exec "$PYTHON" manage.py runserver "0.0.0.0:${PORT}"
