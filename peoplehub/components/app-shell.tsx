@@ -16,6 +16,7 @@ import {
   Menu,
   Rocket,
   Search,
+  Settings,
   ShieldCheck,
   Users,
   X,
@@ -41,6 +42,7 @@ const NAV: Array<{
   { href: "/recruitment", label: "Recruitment", icon: Briefcase, capability: "recruitment.manage" },
   { href: "/onboarding", label: "Onboarding", icon: Rocket, capability: "onboarding.manage" },
   { href: "/access", label: "Access", icon: ShieldCheck, capability: "access.manage" },
+  { href: "/settings", label: "Settings", icon: Settings, capability: "access.manage" },
 ];
 
 export interface ShellUser {
