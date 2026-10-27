@@ -1,0 +1,37 @@
+Acme HR
+=======
+
+This product is a modified distribution of Horilla HRMS.
+
+    Original work: Horilla HRMS
+    Copyright (C) the Horilla project contributors
+    https://github.com/horilla/horilla-hr
+
+    Licensed under the GNU Lesser General Public License, version 2.1.
+    A copy of that licence is included in the file named LICENSE.
+
+Modifications
+-------------
+This distribution has been rebranded and modified. Changes include:
+
+  * Product name, logo, favicon set and colour palette replaced
+    (horilla/settings/branding.py, horilla_theme/static/.../img/,
+    static/favicons/).
+  * Default logo, favicon and page-title fallbacks no longer reference
+    the upstream vendor name or documentation site.
+  * Login screen copy and sample placeholders adjusted.
+
+No changes have been made to the licence terms. The original copyright
+notices and the LICENSE file remain in place, as LGPL-2.1 requires.
+
+What the licence means, in plain terms
+--------------------------------------
+  * You may use, modify and redistribute this software.
+  * If you distribute binaries or the modified source, you must make the
+    corresponding source available under the same licence and keep the
+    notices above intact.
+  * Running it internally, for your own organisation, is not distribution.
+  * There is NO WARRANTY. The original authors are not liable for any
+    damages arising from its use.
+
+This notice is informational and is not legal advice.

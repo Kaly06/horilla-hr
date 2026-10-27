@@ -1,15 +1,44 @@
-# Horilla HRMS
+# Acme HR
 
-[![License: LGPL v2.1](https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg)](https://www.gnu.org/licenses/lgpl-2.1)
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Django](https://img.shields.io/badge/django-5.0+-green.svg)](https://www.djangoproject.com/)
-[![Stars](https://img.shields.io/github/stars/horilla/horilla-hr)](https://github.com/horilla/horilla-hr/stargazers)
-[![Forks](https://img.shields.io/github/forks/horilla/horilla-hr)](https://github.com/horilla/horilla-hr/network/members)
+A Human Resource Management System covering employee records, recruitment,
+onboarding, attendance, leave, payroll, assets, helpdesk and performance —
+built on Django.
 
-> [!IMPORTANT]
-> **`2.0` is now this repository’s default branch.** Use it to run or deploy Horilla (a plain `git clone` checks it out). To contribute code, branch from and open PRs against `dev/v2.0` — GitHub still pre-selects `2.0` as the PR base, so switch it manually. v1 (`1.0`/`master`) is deprioritized, with fixes considered case-by-case rather than on a guaranteed schedule. Full details → [Discussion #1127](https://github.com/horilla/horilla-hr/discussions/1127).
+> This is a rebranded fork of [Horilla HRMS](https://github.com/horilla/horilla-hr),
+> licensed under LGPL-2.1. See [NOTICE](NOTICE) for exactly what was changed and
+> what the licence requires. The original copyright notices and `LICENSE` file
+> remain in place.
 
-> **A comprehensive, free, and open-source Human Resource Management System (HRMS) designed to streamline HR operations and enhance organizational efficiency.**
+## 🎨 Rebranding this for your own organisation
+
+Almost everything visible comes from two places:
+
+| What | Where |
+|---|---|
+| Product name, logo alt text, support email, help links | `horilla/settings/branding.py` |
+| Colour palette (13 ship by default, yours is appended and marked default) | `horilla/settings/branding.py` |
+| Logo and favicons | `scripts/generate_brand_assets.py` regenerates them from that palette |
+
+```bash
+# 1. Edit the constants
+$EDITOR horilla/settings/branding.py
+
+# 2. Regenerate the favicons and PNG logos from the new palette
+python scripts/generate_brand_assets.py
+
+# 3. Optionally replace the vector mark
+#    horilla_theme/static/horilla_theme/assets/img/logo.svg
+
+# 4. Restart
+```
+
+`WHITE_LABELLING = True` is enabled in `horilla/settings/local_settings.py`,
+which means the name and logo shown to signed-in users come from the **Company
+record in the database** (Settings → Company). That is the strongest form of
+branding: rename the company in the UI and the whole product follows.
+
+The constants in `branding.py` cover the screens shown *before* a company
+exists — the login page, the first-run setup wizard and the error pages.
 
 ## 🚀 Features
 
@@ -36,41 +65,29 @@
 - [Support](#-support)
 - [License](#-license)
 
-## 🌳 Which Branch Do I Want?
-
-- **`2.0`** (default) — the latest stable v2 snapshot. This is what a plain `git clone` gives you. Use it to run or deploy Horilla.
-- **`dev/v2.0`** — the active integration branch. If you want to contribute code, branch from and open PRs against this, not `2.0`.
-- **`1.0`/`master`** — v1, now deprioritized (fixes considered case-by-case, no guaranteed schedule). Not deleted, but no longer where active development happens.
-
-See [Discussion #1127](https://github.com/horilla/horilla-hr/discussions/1127) for full background on this transition.
-
 ## ⚡ Quick Start
 
-### Using the official Docker image (Recommended)
+### With Docker (recommended)
 
-Published for `linux/amd64` and `linux/arm64` as
-[`horilla/horilla-hr`](https://hub.docker.com/r/horilla/horilla-hr):
+The official upstream image (`horilla/horilla-hr`) does **not** include the
+changes in this repository — pulling it would replace your rebrand with the
+default Horilla build. Always build from this source.
 
 ```bash
-docker pull horilla/horilla-hr:2.1.5
+git clone <your-repo-url> acme-hr
+cd acme-hr
+docker compose up -d
+open http://localhost:8000
 ```
 
-Pin an exact version in production rather than `latest`, so a deploy cannot
-pick up a new release unattended; see
-[all tags](https://hub.docker.com/r/horilla/horilla-hr/tags) for the current
-one. The
-[repository overview](https://hub.docker.com/r/horilla/horilla-hr) documents
-every environment variable, the volumes to back up, and a working Compose file.
-
-First boot applies the full migration set before the web server binds, which
-takes a few minutes on an empty database.
+Full Docker guide, including production deployment: [docker/README.md](docker/README.md)
 
 ### Building from source with Docker
 
 ```bash
-# Clone the repository (defaults to the stable 2.0 branch)
-git clone https://github.com/horilla/horilla-hr.git
-cd horilla-hr
+# Clone this repository
+git clone <your-repo-url> acme-hr
+cd acme-hr
 
 # Start with Docker Compose
 docker compose up -d
@@ -89,8 +106,8 @@ module scope, so the app cannot start on it.
 
 ```bash
 # Clone and setup (defaults to the stable 2.0 branch)
-git clone https://github.com/horilla/horilla-hr.git
-cd horilla-hr
+git clone <your-repo-url> acme-hr
+cd acme-hr
 
 # Create virtual environment
 python3 -m venv venv
@@ -150,7 +167,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ```bash
 # Fork and clone your fork
 git clone -b dev/v2.0 https://github.com/YOUR_USERNAME/horilla-hr.git
-cd horilla-hr
+cd acme-hr
 
 # Add upstream remote
 git remote add upstream https://github.com/horilla/horilla-hr.git
@@ -185,39 +202,57 @@ pip install -r requirements.txt
 
 ### Reporting Security Issues
 
-Please report security vulnerabilities via [GitHub Private Vulnerability Reporting](https://github.com/horilla/horilla-hr/security/advisories/new), not email. Do not create public GitHub issues for security vulnerabilities. See [SECURITY.md](SECURITY.md) for full details.
+Report vulnerabilities **privately** to your own security contact — do not open
+a public issue. This fork is maintained by this repository's owners, not by the
+Horilla project, so issues must be triaged here. See [SECURITY.md](SECURITY.md)
+for the process, and note that it inherits policy text from upstream that you
+may want to update with your own contact address.
+
+If you believe a vulnerability exists in the **unmodified upstream code**, it is
+also worth notifying the Horilla maintainers so the fix can be merged upstream
+and picked up by this fork.
 
 ### Security Best Practices
 
 - Always use HTTPS in production
+- Set `DEBUG = False` and `HORILLA_ENV=production`
+- Replace the default `SECRET_KEY`, database and Redis passwords in `.env`
 - Regularly update dependencies
 - Use strong passwords and enable 2FA
-- Monitor logs for suspicious activities
+- Take regular database backups (see the `pg_backup` module)
 
 ## 📞 Support
 
-### Community Support
+This is a private fork. Support is provided by whoever maintains this
+repository — find them in your team's internal documentation.
 
-- 📖 **Documentation**: [docs.horilla.com](https://docs.horilla.com)
-- 💬 **GitHub Discussions**: [GitHub Discussions](https://github.com/horilla/horilla-hr/discussions)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/horilla/horilla-hr/issues)
-- ✨ **Feature Requests**: [GitHub Issues](https://github.com/horilla/horilla-hr/issues)
+Useful upstream references (documentation, not support):
+- 📖 **Upstream documentation**: [docs.horilla.com](https://docs.horilla.com)
+- 🐛 **Upstream codebase**: [github.com/horilla/horilla-hr](https://github.com/horilla/horilla-hr)
 
-### Professional Support
+> Upstream's documentation, community forum and paid support describe **stock
+> Horilla**. Where this fork differs — branding, the default palette, the
+> `branding.py` module — their guidance will not match this codebase.
 
-For enterprise support, custom development, and consulting services:
-- 📧 **Email**: support@horilla.com
-- 🌐 **Website**: [www.horilla.com](https://www.horilla.com)
+### Keeping up with upstream security fixes
 
+```bash
+git remote add upstream https://github.com/horilla/horilla-hr.git
+git fetch upstream
+git log --oneline upstream/2.0 --no-merges | head -30   # review first
+git cherry-pick <commit>                                 # or merge deliberately
+```
 
 ## 📄 License
 
-This project is licensed under the [LGPL-2.1 License](LICENSE) - see the LICENSE file for details.
+This project is licensed under the [LGPL-2.1 License](LICENSE) — see the LICENSE
+file for the full text and [NOTICE](NOTICE) for what this fork changed.
 
-<div align="center">
+If you distribute this software (or a modified version of it) outside your
+organisation, LGPL-2.1 requires you to keep the copyright notices and licence
+intact, and to make the corresponding source available.
 
-**Made with ❤️ by the Horilla Team**
+---
 
-[⭐ Star us on GitHub](https://github.com/horilla/horilla-hr) | [🐛 Report Bug](https://github.com/horilla/horilla-hr/issues) | [💡 Request Feature](https://github.com/horilla/horilla-hr/issues)
-
-</div>
+<sub>Built on [Horilla HRMS](https://github.com/horilla/horilla-hr), LGPL-2.1.
+Rebranded and maintained as Acme HR. See [NOTICE](NOTICE).</sub>

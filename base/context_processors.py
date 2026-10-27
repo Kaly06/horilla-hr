@@ -204,6 +204,17 @@ urlpatterns.append(
 )
 
 
+def _fallback_brand_name() -> str:
+    """
+    Product name used when no Company record exists yet (login page, first-run
+    wizard, error pages) or when white-labelling is switched off.
+
+    Comes from settings so a fork can rename the product without editing
+    templates. See horilla/settings/branding.py.
+    """
+    return getattr(settings, "FALLBACK_BRAND_NAME", "HR")
+
+
 def white_labelling_company(request):
     white_labelling = getattr(settings, "WHITE_LABELLING", False)
     if white_labelling:
@@ -214,17 +225,20 @@ def white_labelling_company(request):
                 if request.user.employee_get.get_company()
                 else hq
             )
-        except:
+        except Exception:
+            # Anonymous users have no employee record; fall back to HQ.
             company = hq
 
         return {
-            "white_label_company_name": company.company if company else "Horilla",
+            "white_label_company_name": company.company if company else _fallback_brand_name(),
             "white_label_company": company,
+            "brand_name": _fallback_brand_name(),
         }
     else:
         return {
-            "white_label_company_name": "Horilla",
+            "white_label_company_name": _fallback_brand_name(),
             "white_label_company": None,
+            "brand_name": _fallback_brand_name(),
         }
 
 
@@ -234,9 +248,7 @@ def doc_base_url(request):
     "{{ DOC_BASE_URL }}<path>" so only this one setting needs to change for
     white-labelled deployments.
     """
-    return {
-        "DOC_BASE_URL": getattr(settings, "DOC_BASE_URL", "https://www.horilla.com")
-    }
+    return {"DOC_BASE_URL": getattr(settings, "DOC_BASE_URL", "https://example.com/help")}
 
 
 def resignation_request_enabled(request):

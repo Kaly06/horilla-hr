@@ -12,6 +12,7 @@ from django.utils.translation import gettext_lazy as _
 
 from base.models import Company
 from horilla.models import HorillaModel
+from horilla.settings.branding import theme_data as _brand_theme_data
 
 THEMES_DATA = [
     {
@@ -419,6 +420,11 @@ THEMES_DATA = [
         "secondary_900": "#166534",
     },
 ]
+
+# The deployment's own palette, defined in horilla/settings/branding.py.
+# Appended last so it wins the tie when several themes claim is_default:
+# HorillaColorTheme.save() keeps only the most recently saved default.
+THEMES_DATA.append(_brand_theme_data())
 
 
 class HorillaColorTheme(HorillaModel):
