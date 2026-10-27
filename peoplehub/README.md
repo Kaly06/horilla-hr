@@ -46,10 +46,41 @@ npm run build      # production build
 | Attendance | `/attendance` | Live clock, clock in/out, team presence, two-week rhythm chart |
 | Recruitment | `/recruitment` | Drag-and-drop pipeline across five stages |
 | Onboarding | `/onboarding` | Per-hire checklists that save on every tick |
+| Access | `/access` | Administrator console: change anyone's role, grant one-off permissions |
 | Settings | `/settings` | Brand config, colour tokens, module status, stack |
 
 Plus: `⌘K` / `Ctrl+K` command palette, light/dark theme, collapsible sidebar,
-and a fully responsive mobile drawer.
+and a fully responsive mobile drawer. Navigation is filtered by permission, so
+each role only sees the sections it can actually use.
+
+---
+
+## Roles and access
+
+| Role | Can do |
+|---|---|
+| **Administrator** | Everything, including changing other people's access |
+| **HR Manager** | People, leave, attendance, recruitment, onboarding. Cannot change access |
+| **Team Manager** | Directory, approve leave, view attendance |
+| **Employee** | Self-service: directory, own leave, own attendance |
+
+Sign in as each demo account to see the difference:
+
+| Account | Role |
+|---|---|
+| `amara.okafor@peoplehub.app` | Administrator |
+| `ravi.menon@peoplehub.app` | Team Manager |
+| `lina.haddad@peoplehub.app` | Employee |
+
+Roles are defined in **`lib/rbac.ts`** — capabilities, role descriptions and
+the `can()` helper all live in that one file. Per-person exceptions are stored
+in `employees.permissions` as a JSON array of capability keys.
+
+**Enforcement is server-side.** Hiding a nav link is cosmetic; every page
+re-checks the capability before rendering and every Server Action calls
+`guard()` before touching the database. A non-admin POSTing straight to the
+`setAccessRole` action gets `"You do not have permission"` and the row is
+unchanged. The console also refuses to demote the last remaining administrator.
 
 ---
 

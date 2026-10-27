@@ -11,11 +11,18 @@ import type { LeaveRequest } from "@/lib/types";
 const TABS = ["pending", "approved", "declined", "all"] as const;
 type Tab = (typeof TABS)[number];
 
-export function LeaveBoard({ requests }: { requests: LeaveRequest[] }) {
+export function LeaveBoard({
+  requests,
+  canApprove,
+}: {
+  requests: LeaveRequest[];
+  canApprove: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("pending");
   const [rows, setRows] = useState(requests);
   const [, start] = useTransition();
   const [busy, setBusy] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const visible = tab === "all" ? rows : rows.filter((r) => r.status === tab);
 
@@ -23,7 +30,13 @@ export function LeaveBoard({ requests }: { requests: LeaveRequest[] }) {
     setBusy(id);
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
     start(async () => {
-      await setLeaveStatus(id, status);
+      const res = await setLeaveStatus(id, status);
+      if (!res?.ok) {
+        setRows((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status: r.status === status ? "pending" : r.status } : r)),
+        );
+        setError(res?.error ?? "Could not save that decision.");
+      }
       setTimeout(() => setBusy(null), 350);
     });
   }
@@ -43,6 +56,12 @@ export function LeaveBoard({ requests }: { requests: LeaveRequest[] }) {
           {stats.pending} awaiting a decision · {stats.days} approved days in total
         </p>
       </div>
+
+      {!canApprove && (
+        <p className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-[12px] text-subtle">
+          You can see your team&apos;s requests, but approving them is limited to managers and HR.
+        </p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         {[
@@ -65,6 +84,10 @@ export function LeaveBoard({ requests }: { requests: LeaveRequest[] }) {
           </motion.div>
         ))}
       </div>
+
+      {error && (
+        <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-[12px] text-rose-500">{error}</p>
+      )}
 
       <div className="flex gap-1.5 border-b border-line pb-2">
         {TABS.map((t) => (
@@ -116,7 +139,7 @@ export function LeaveBoard({ requests }: { requests: LeaveRequest[] }) {
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-subtle">“{r.reason}”</p>
                 </div>
 
-                {r.status === "pending" ? (
+                {r.status === "pending" && canApprove ? (
                   <div className="flex gap-1.5">
                     <button
                       onClick={() => decide(r.id, "approved")}

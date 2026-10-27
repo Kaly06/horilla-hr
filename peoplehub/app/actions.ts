@@ -4,12 +4,34 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
+import { getEmployee } from "@/lib/queries";
+import { adminCount } from "@/lib/queries";
+import { can, isRoleKey, type Capability } from "@/lib/rbac";
 
 const DEMO_LOGINS: Record<string, number> = {
   "amara.okafor@peoplehub.app": 1,
   "lina.haddad@peoplehub.app": 3,
   "ravi.menon@peoplehub.app": 2,
 };
+
+/**
+ * Resolves the signed-in employee and checks a capability.
+ * Returns the employee on success, or an error the caller can surface.
+ * Never trust the UI to have hidden a button — every mutation re-checks here.
+ */
+async function guard(capability: Capability) {
+  const jar = await cookies();
+  const uid = Number(jar.get("ph_uid")?.value ?? 0);
+  if (!uid) return { ok: false as const, error: "You are not signed in." };
+
+  const me = getEmployee(uid);
+  if (!me) return { ok: false as const, error: "You are not signed in." };
+
+  if (!can(me.accessRole, capability, me.extraPermissions as Capability[])) {
+    return { ok: false as const, error: "You do not have permission to do that." };
+  }
+  return { ok: true as const, me };
+}
 
 export async function login(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -34,6 +56,9 @@ export async function logout() {
 }
 
 export async function setLeaveStatus(id: number, status: "approved" | "declined") {
+  const auth = await guard("leave.approve");
+  if (!auth.ok) return { ok: false, error: auth.error };
+
   const db = getDb();
   db.prepare(`UPDATE leave_requests SET status = ? WHERE id = ?`).run(status, id);
   const row = db.prepare(`SELECT employee_id, type FROM leave_requests WHERE id = ?`).get(id) as any;
@@ -49,6 +74,9 @@ export async function setLeaveStatus(id: number, status: "approved" | "declined"
 }
 
 export async function toggleTask(id: number, done: boolean) {
+  const auth = await guard("onboarding.manage");
+  if (!auth.ok) return { ok: false, error: auth.error };
+
   const db = getDb();
   db.prepare(`UPDATE onboarding_tasks SET done = ? WHERE id = ?`).run(done ? 1 : 0, id);
   revalidatePath("/onboarding");
@@ -57,6 +85,9 @@ export async function toggleTask(id: number, done: boolean) {
 }
 
 export async function moveCandidate(id: number, stage: string) {
+  const auth = await guard("recruitment.manage");
+  if (!auth.ok) return { ok: false, error: auth.error };
+
   const db = getDb();
   db.prepare(`UPDATE candidates SET stage = ? WHERE id = ?`).run(stage, id);
   revalidatePath("/recruitment");
@@ -110,4 +141,61 @@ export async function punch(action: "in" | "out") {
   revalidatePath("/attendance");
   revalidatePath("/");
   return { ok: true, time };
+}
+
+/* ── Access management ──────────────────────────────────────── */
+
+export async function setAccessRole(id: number, role: string) {
+  const auth = await guard("access.manage");
+  if (!auth.ok) return { ok: false, error: auth.error };
+  if (!isRoleKey(role)) return { ok: false, error: "That is not a valid role." };
+
+  const db = getDb();
+  const target = db
+    .prepare(`SELECT access_role FROM employees WHERE id = ?`)
+    .get(id) as { access_role: string } | undefined;
+  if (!target) return { ok: false, error: "That person no longer exists." };
+
+  // Do not let the last administrator lock everyone out of the console.
+  if (target.access_role === "admin" && role !== "admin" && adminCount() <= 1) {
+    return {
+      ok: false,
+      error: "This is the only administrator. Promote someone else first.",
+    };
+  }
+
+  db.prepare(`UPDATE employees SET access_role = ? WHERE id = ?`).run(role, id);
+  revalidatePath("/access");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function togglePermission(id: number, capability: string, granted: boolean) {
+  const auth = await guard("access.manage");
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  const db = getDb();
+  const row = db
+    .prepare(`SELECT permissions FROM employees WHERE id = ?`)
+    .get(id) as { permissions: string | null } | undefined;
+  if (!row) return { ok: false, error: "That person no longer exists." };
+
+  let current: string[] = [];
+  try {
+    const parsed = row.permissions ? JSON.parse(row.permissions) : [];
+    if (Array.isArray(parsed)) current = parsed;
+  } catch {
+    current = [];
+  }
+
+  const next = granted
+    ? Array.from(new Set([...current, capability]))
+    : current.filter((c) => c !== capability);
+
+  db.prepare(`UPDATE employees SET permissions = ? WHERE id = ?`).run(
+    next.length ? JSON.stringify(next) : null,
+    id,
+  );
+  revalidatePath("/access");
+  return { ok: true };
 }

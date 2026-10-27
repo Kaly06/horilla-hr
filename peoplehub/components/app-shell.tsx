@@ -16,7 +16,7 @@ import {
   Menu,
   Rocket,
   Search,
-  Settings,
+  ShieldCheck,
   Users,
   X,
 } from "lucide-react";
@@ -25,20 +25,30 @@ import { ThemeToggle } from "./theme-toggle";
 import { Avatar } from "./avatar";
 import { brand } from "@/lib/brand";
 
-const NAV = [
+import type { Capability } from "@/lib/rbac";
+
+/** `capability` omitted = visible to anyone signed in. */
+const NAV: Array<{
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  capability?: Capability;
+}> = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/people", label: "People", icon: Users },
+  { href: "/people", label: "People", icon: Users, capability: "people.view" },
   { href: "/leave", label: "Leave", icon: CalendarDays },
   { href: "/attendance", label: "Attendance", icon: Clock },
-  { href: "/recruitment", label: "Recruitment", icon: Briefcase },
-  { href: "/onboarding", label: "Onboarding", icon: Rocket },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/recruitment", label: "Recruitment", icon: Briefcase, capability: "recruitment.manage" },
+  { href: "/onboarding", label: "Onboarding", icon: Rocket, capability: "onboarding.manage" },
+  { href: "/access", label: "Access", icon: ShieldCheck, capability: "access.manage" },
 ];
 
 export interface ShellUser {
   name: string;
   role: string;
   hue: number;
+  roleName: string;
+  capabilities: string[];
 }
 
 export interface SearchablePerson {
@@ -69,6 +79,10 @@ export function AppShell({
 
   const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
+  const nav = NAV.filter(
+    (item) => !item.capability || user.capabilities.includes(item.capability),
+  );
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -85,7 +99,7 @@ export function AppShell({
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const pages = NAV.filter((n) => n.label.toLowerCase().includes(q)).map((n) => ({
+    const pages = nav.filter((n) => n.label.toLowerCase().includes(q)).map((n) => ({
       kind: "page" as const,
       id: `p-${n.href}`,
       label: n.label,
@@ -104,7 +118,8 @@ export function AppShell({
         hue: p.hue,
       }));
     return [...pages, ...persons];
-  }, [query, people]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, people, user.capabilities.join()]);
 
   useEffect(() => setCursor(0), [query]);
 
@@ -129,7 +144,7 @@ export function AppShell({
         </div>
 
         <nav className="mt-2 flex-1 space-y-0.5 px-3">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const isActive = active(item.href);
             const Icon = item.icon;
             return (
@@ -169,7 +184,7 @@ export function AppShell({
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-medium text-fg">{user.name}</p>
-                <p className="truncate text-[11.5px] text-subtle">{user.role}</p>
+                <p className="truncate text-[11.5px] text-subtle">{user.roleName}</p>
               </div>
             )}
             {!collapsed && (
@@ -217,7 +232,7 @@ export function AppShell({
                 </button>
               </div>
               <nav className="space-y-0.5">
-                {NAV.map((item) => {
+                {nav.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link
@@ -246,7 +261,7 @@ export function AppShell({
           </button>
 
           <p className="text-[13.5px] font-medium text-muted">
-            {NAV.find((n) => active(n.href))?.label ?? "Overview"}
+            {nav.find((n) => active(n.href))?.label ?? "Overview"}
           </p>
 
           <button

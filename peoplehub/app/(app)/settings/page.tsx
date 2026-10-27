@@ -1,6 +1,10 @@
+import { redirect } from "next/navigation";
 import { CheckCircle2, CircleSlash, Database, Palette, Type, Wallet } from "lucide-react";
 import { Card, Badge } from "@/components/ui";
 import { brand } from "@/lib/brand";
+import { currentUser } from "@/lib/session";
+import { can, roleOf, type Capability } from "@/lib/rbac";
+import { NoAccess } from "@/components/no-access";
 
 export const metadata = { title: "Settings" };
 
@@ -19,12 +23,27 @@ const MODULES = [
   { name: "Attendance", on: true },
   { name: "Recruitment pipeline", on: true },
   { name: "Onboarding", on: true },
+  { name: "Access control", on: true },
   { name: "Command palette", on: true },
   { name: "Dark + light theme", on: true },
   { name: "Payroll", on: false },
 ];
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const me = await currentUser();
+  if (!me) redirect("/login");
+
+  if (!can(me.accessRole, "access.manage", me.extraPermissions as Capability[])) {
+    return (
+      <NoAccess
+        title="Settings are administrator-only"
+        hint="Branding and stack configuration are limited to administrators."
+      />
+    );
+  }
+
+  const role = roleOf(me.accessRole);
+
   return (
     <div className="space-y-4">
       <div>
@@ -43,6 +62,7 @@ export default function SettingsPage() {
               ["Product name", brand.name],
               ["Tagline", brand.tagline],
               ["Support email", brand.supportEmail],
+              ["Signed in as", `${me.firstName} ${me.lastName} · ${role.name}`],
               ["Source file", "peoplehub/lib/brand.ts"],
             ].map(([k, v]) => (
               <div key={k} className="flex items-baseline justify-between gap-4 border-b border-line pb-2 last:border-0">
@@ -52,8 +72,8 @@ export default function SettingsPage() {
             ))}
           </dl>
           <p className="mt-3 rounded-lg bg-brand-soft px-3 py-2 text-[11.5px] leading-relaxed text-brand">
-            Edit <code className="font-mono">lib/brand.ts</code> once and the name changes everywhere — login,
-            sidebar, page titles, emails and footer.
+            Edit <code className="font-mono">lib/brand.ts</code> once and the name changes everywhere.
+            Roles live in <code className="font-mono">lib/rbac.ts</code>.
           </p>
         </Card>
 
@@ -120,7 +140,7 @@ export default function SettingsPage() {
               ["Database", "SQLite (Node built-in)"],
               ["Styling", "Tailwind CSS v4"],
               ["Motion", "Motion (Framer)"],
-              ["Data location", ".data/peoplehub.db"],
+              ["Permissions", "Role + capability checks"],
             ].map(([k, v]) => (
               <div key={k} className="flex items-baseline justify-between gap-4 border-b border-line pb-2 last:border-0">
                 <dt className="text-[12.5px] text-muted">{k}</dt>
