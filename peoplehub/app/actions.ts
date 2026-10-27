@@ -66,7 +66,8 @@ export async function moveCandidate(id: number, stage: string) {
 export async function punch(action: "in" | "out") {
   const jar = await cookies();
   const uid = Number(jar.get("ph_uid")?.value ?? 0);
-  if (!uid) return { ok: false };
+  if (!uid) return { ok: false, error: "Not signed in" };
+
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
@@ -74,21 +75,39 @@ export async function punch(action: "in" | "out") {
 
   const existing = db
     .prepare(`SELECT id, check_in, check_out FROM attendance WHERE employee_id = ? AND date = ?`)
-    .get(uid, today) as any;
+    .get(uid, today) as { id: number; check_in: string | null; check_out: string | null } | undefined;
 
   if (action === "in") {
+    // Grace period is 09:15; anything later counts as a late arrival.
+    const minutesNow = now.getHours() * 60 + now.getMinutes();
+    const status = minutesNow > 9 * 60 + 15 ? "late" : "present";
+
     if (existing) {
-      db.prepare(`UPDATE attendance SET check_in = ? WHERE id = ?`).run(time, existing.id);
+      // Clocking in again restarts the day: clear the previous clock-out
+      // rather than leaving a record that looks already finished.
+      db.prepare(
+        `UPDATE attendance SET check_in = ?, check_out = NULL, status = ? WHERE id = ?`,
+      ).run(time, status, existing.id);
     } else {
       db.prepare(
-        `INSERT INTO attendance (employee_id, date, check_in, status) VALUES (?, ?, ?, 'present')`,
-      ).run(uid, today, time);
+        `INSERT INTO attendance (employee_id, date, check_in, check_out, status)
+         VALUES (?, ?, ?, NULL, ?)`,
+      ).run(uid, today, time, status);
     }
-  } else if (existing) {
-    db.prepare(`UPDATE attendance SET check_out = ? WHERE id = ?`).run(time, existing.id);
+  } else {
+    // Nothing to clock out of yet — clock them in first so the record is sane.
+    if (!existing || !existing.check_in) {
+      db.prepare(
+        `INSERT INTO attendance (employee_id, date, check_in, check_out, status)
+         VALUES (?, ?, NULL, ?, 'present')
+         ON CONFLICT(employee_id, date) DO UPDATE SET check_out = excluded.check_out`,
+      ).run(uid, today, time);
+    } else {
+      db.prepare(`UPDATE attendance SET check_out = ? WHERE id = ?`).run(time, existing.id);
+    }
   }
 
   revalidatePath("/attendance");
   revalidatePath("/");
-  return { ok: true };
+  return { ok: true, time };
 }

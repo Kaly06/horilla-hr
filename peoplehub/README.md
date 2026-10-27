@@ -24,10 +24,12 @@ Sign in with any of the demo accounts (no password needed):
 | `lina.haddad@peoplehub.app` | Product Designer |
 | `ravi.menon@peoplehub.app` | Engineering Manager |
 
-The database is created and seeded automatically on first boot.
+The database is created and seeded automatically on first boot. The three demo
+accounts deliberately start with **no attendance record for today**, so you can
+clock in and watch the day build up.
 
 ```bash
-npm run reset      # wipe demo data, reseed on next start
+npm run reset      # wipe demo data (restart the server afterwards to reseed)
 npm run typecheck  # tsc --noEmit
 npm run build      # production build
 ```

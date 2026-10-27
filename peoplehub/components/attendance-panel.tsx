@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Coffee, LogIn, LogOut, MapPin, Timer, Users } from "lucide-react";
 import { Avatar } from "./avatar";
@@ -21,9 +22,16 @@ export function AttendancePanel({
   team: Array<{ employee: Employee; status: string; checkIn: string | null }>;
   week: Array<{ date: string; label: string; count: number }>;
 }) {
+  const router = useRouter();
   const [now, setNow] = useState<Date | null>(null);
   const [optimistic, setOptimistic] = useState(myRecord);
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  // Keep the card in sync when the server sends fresh data after a refresh.
+  useEffect(() => {
+    setOptimistic(myRecord);
+  }, [myRecord]);
 
   useEffect(() => {
     setNow(new Date());
@@ -33,16 +41,34 @@ export function AttendancePanel({
 
   const punchedIn = !!optimistic?.checkIn;
   const punchedOut = !!optimistic?.checkOut;
+  // You can start a day (or start a new one) unless you are mid-shift.
+  const canClockIn = !punchedIn || punchedOut;
+  const canClockOut = punchedIn && !punchedOut;
 
   function doPunch(kind: "in" | "out") {
+    setError(null);
     const time = new Date().toTimeString().slice(0, 5);
     setOptimistic((prev) => ({
-      ...(prev ?? { id: 0, employeeId: me.id, date: "", checkIn: null, checkOut: null, status: "present" }),
+      ...(prev ?? {
+        id: 0,
+        employeeId: me.id,
+        date: "",
+        checkIn: null,
+        checkOut: null,
+        status: "present",
+      }),
       checkIn: kind === "in" ? time : prev?.checkIn ?? null,
-      checkOut: kind === "out" ? time : prev?.checkOut ?? null,
+      checkOut: kind === "in" ? null : time,
     }));
     start(async () => {
-      await punch(kind);
+      const res = await punch(kind);
+      if (!res?.ok) {
+        setError(res?.error ?? "Could not save your punch.");
+        setOptimistic(myRecord);
+        return;
+      }
+      // Pull the fresh server render so the team list and summary agree.
+      router.refresh();
     });
   }
 
@@ -90,10 +116,10 @@ export function AttendancePanel({
                 <Avatar first={me.firstName} last={me.lastName} hue={me.hue} size={38} />
                 <div>
                   <p className="text-[13.5px] font-semibold text-fg">{me.firstName} {me.lastName}</p>
-                  <p className="text-[11.5px] text-subtle">Local time · Dubai</p>
+                  <p className="text-[11.5px] text-subtle">Your local time</p>
                 </div>
               </div>
-              <Badge tone={punchedIn && !punchedOut ? "success" : "neutral"} dot>
+              <Badge tone={canClockOut ? "success" : punchedOut ? "info" : "neutral"} dot>
                 {punchedOut ? "Day complete" : punchedIn ? "Clocked in" : "Not clocked in"}
               </Badge>
             </div>
@@ -122,18 +148,24 @@ export function AttendancePanel({
               ))}
             </div>
 
+            {error && (
+              <p className="mt-3 rounded-lg bg-rose-500/10 px-2.5 py-1.5 text-[11.5px] text-rose-500">
+                {error}
+              </p>
+            )}
+
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => doPunch("in")}
-                disabled={pending || punchedIn || punchedOut}
-                className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand text-[13px] font-semibold text-brand-fg transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
+                disabled={pending || !canClockIn}
+                className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand text-[13px] font-semibold text-brand-fg transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <LogIn className="size-4" /> Clock in
+                <LogIn className="size-4" /> {punchedOut ? "Start again" : "Clock in"}
               </button>
               <button
                 onClick={() => doPunch("out")}
-                disabled={pending || !punchedIn || punchedOut}
-                className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface text-[13px] font-semibold text-fg transition-all hover:bg-surface-hover active:scale-[0.98] disabled:opacity-40"
+                disabled={pending || !canClockOut}
+                className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface text-[13px] font-semibold text-fg transition-all hover:bg-surface-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <LogOut className="size-4" /> Clock out
               </button>
